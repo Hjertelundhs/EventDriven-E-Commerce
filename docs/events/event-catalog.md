@@ -54,23 +54,23 @@ DLT-meddelanden behåller originalpayload och headers samt lägger till felklass
 
 ### `OrderCreatedV1`
 
-**Topic:** `commerce.order.v1`  
-**Producent:** Order Service  
-**Konsumenter:** Inventory Service, Payment Service, Delivery Service, Notification Service  
+**Topic:** `commerce.order.v1`<br>
+**Producent:** Order Service<br>
+**Konsumenter:** Inventory Service, Payment Service, Delivery Service, Notification Service<br>
 **Payload:** `orderId`, `customerId`, `lines[] { productId, sku, productName, quantity, unitPrice, lineTotal }`, `totalAmount`, `currency`, `shippingAddress`.
 
 Shippingadressen är den enda adress som krävs för fulfillment och får därför följa eventet; billingadressen stannar i Order Service. Loggning och telemetry måste redigera payloaden. Payment och Delivery lagrar endast sina nödvändiga fält som väntande lokal projektion. De utför ingen betalning eller leverans förrän respektive triggande event anländer.
 
 ### `OrderCompletedV1`
 
-**Konsumenter:** Inventory Service, Notification Service.  
+**Konsumenter:** Inventory Service, Notification Service.<br>
 **Payload:** `orderId`, `customerId`, `completedAt`.
 
 Inventory Service slutför reservationen. Händelsen är orderns terminala framgångsfakta.
 
 ### `OrderCancelledV1`
 
-**Konsumenter:** Notification Service och auditprojektion.  
+**Konsumenter:** Notification Service och auditprojektion.<br>
 **Payload:** `orderId`, `customerId`, `reasonCode`, `cancelledAt`.
 
 Kompensationer triggas av deras ursprungliga felhändelse, inte av detta generella event, vilket undviker tvetydig dubbelkompensation.
@@ -79,70 +79,70 @@ Kompensationer triggas av deras ursprungliga felhändelse, inte av detta generel
 
 ### `InventoryReservedV1`
 
-**Konsumenter:** Order Service, Payment Service.  
+**Konsumenter:** Order Service, Payment Service.<br>
 **Payload:** `reservationId`, `orderId`, `items[] { sku, quantity }`, `reservedAt`, `expiresAt`.
 
 ### `InventoryReservationFailedV1`
 
-**Konsumenter:** Order Service, Notification Service.  
+**Konsumenter:** Order Service, Notification Service.<br>
 **Payload:** `orderId`, `failures[] { sku, requestedQuantity, availableQuantity, reasonCode }`, `failedAt`.
 
 ### `InventoryReleasedV1`
 
-**Konsumenter:** Order Service.  
+**Konsumenter:** Order Service.<br>
 **Payload:** `reservationId`, `orderId`, `items[] { sku, quantity }`, `releaseReason`, `releasedAt`.
 
 ### `InventoryReservationCompletedV1`
 
-**Konsumenter:** auditprojektion.  
+**Konsumenter:** auditprojektion.<br>
 **Payload:** `reservationId`, `orderId`, `items[] { sku, quantity }`, `completedAt`.
 
 ## Payment events
 
 ### `PaymentCompletedV1`
 
-**Konsumenter:** Order Service, Delivery Service, Notification Service.  
+**Konsumenter:** Order Service, Delivery Service, Notification Service.<br>
 **Payload:** `paymentId`, `orderId`, `amount`, `currency`, `providerReference`, `completedAt`.
 
 `providerReference` är en simulerad opak referens, aldrig kortdata.
 
 ### `PaymentFailedV1`
 
-**Konsumenter:** Order Service, Inventory Service, Notification Service.  
+**Konsumenter:** Order Service, Inventory Service, Notification Service.<br>
 **Payload:** `paymentId`, `orderId`, `amount`, `currency`, `reasonCode`, `retryable`, `failedAt`.
 
 `retryable` beskriver providerutfallet; teknisk konsumentretry styrs separat.
 
 ### `RefundRequestedV1`
 
-**Konsumenter:** Payment Services refund-adapter, Notification Service/audit.  
+**Konsumenter:** Payment Services refund-adapter, Notification Service/audit.<br>
 **Payload:** `refundId`, `paymentId`, `orderId`, `amount`, `currency`, `reasonCode`, `requestedAt`.
 
 ### `RefundCompletedV1`
 
-**Konsumenter:** Order Service, Notification Service/audit.  
+**Konsumenter:** Order Service, Notification Service/audit.<br>
 **Payload:** `refundId`, `paymentId`, `orderId`, `amount`, `currency`, `providerReference`, `completedAt`.
 
 ### `RefundFailedV1`
 
-**Konsumenter:** Order Service, operatörslarm.  
+**Konsumenter:** Order Service, operatörslarm.<br>
 **Payload:** `refundId`, `paymentId`, `orderId`, `reasonCode`, `retryable`, `failedAt`.
 
 ## Delivery events
 
 ### `DeliveryCreatedV1`
 
-**Konsumenter:** Order Service, Notification Service.  
+**Konsumenter:** Order Service, Notification Service.<br>
 **Payload:** `deliveryId`, `orderId`, `trackingNumber`, `estimatedDeliveryDate`, `createdAt`.
 
 ### `DeliveryFailedV1`
 
-**Konsumenter:** Order Service, Payment Service, Inventory Service, Notification Service.  
+**Konsumenter:** Order Service, Payment Service, Inventory Service, Notification Service.<br>
 **Payload:** `deliveryId` (optional om skapande aldrig hann ske), `orderId`, `reasonCode`, `failedAt`.
 
 ### `DeliveryStatusChangedV1`
 
-**Konsumenter:** Order Service, Notification Service.  
+**Konsumenter:** Order Service, Notification Service.<br>
 **Payload:** `deliveryId`, `orderId`, `trackingNumber`, `previousStatus`, `status`, `changedAt`.
 
 Tillåtna statusvärden är `CREATED`, `READY_FOR_PICKUP`, `IN_TRANSIT`, `OUT_FOR_DELIVERY`, `DELIVERED`, `FAILED` och `RETURNED`.
@@ -151,7 +151,7 @@ Tillåtna statusvärden är `CREATED`, `READY_FOR_PICKUP`, `IN_TRANSIT`, `OUT_FO
 
 ### `ProductChangedV1`
 
-**Konsumenter:** Product Services cacheinvaliderare och framtida read models.  
+**Konsumenter:** Product Services cacheinvaliderare och framtida read models.<br>
 **Payload:** `productId`, `sku`, `changeType` (`CREATED`, `UPDATED`, `DEACTIVATED`), `productVersion`, `changedAt`.
 
 Eventet innehåller inte hela beskrivningen eller priset. Cacheinvalidering tar bort berörda nycklar; nästa läsning fyller cachen från Product Service-databasen.
