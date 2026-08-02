@@ -1,0 +1,450 @@
+name: ${COMPOSE_PROJECT_NAME:-order-logistics}
+
+x-common-service: &common-service
+  init: true
+  restart: unless-stopped
+  networks:
+    - platform-internal
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  postgres:
+    <<: *common-service
+    image: postgres:17.9-alpine
+    profiles: ["core"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:?Set POSTGRES_SUPERUSER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?Set POSTGRES_SUPERUSER_PASSWORD in .env}
+      POSTGRES_DB: platform_admin
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C
+      GATEWAY_DB_NAME: ${GATEWAY_DB_NAME:?Set GATEWAY_DB_NAME in .env}
+      GATEWAY_DB_USER: ${GATEWAY_DB_USER:?Set GATEWAY_DB_USER in .env}
+      GATEWAY_DB_PASSWORD: ${GATEWAY_DB_PASSWORD:?Set GATEWAY_DB_PASSWORD in .env}
+      IDENTITY_DB_NAME: ${IDENTITY_DB_NAME:?Set IDENTITY_DB_NAME in .env}
+      IDENTITY_DB_USER: ${IDENTITY_DB_USER:?Set IDENTITY_DB_USER in .env}
+      IDENTITY_DB_PASSWORD: ${IDENTITY_DB_PASSWORD:?Set IDENTITY_DB_PASSWORD in .env}
+      PRODUCT_DB_NAME: ${PRODUCT_DB_NAME:?Set PRODUCT_DB_NAME in .env}
+      PRODUCT_DB_USER: ${PRODUCT_DB_USER:?Set PRODUCT_DB_USER in .env}
+      PRODUCT_DB_PASSWORD: ${PRODUCT_DB_PASSWORD:?Set PRODUCT_DB_PASSWORD in .env}
+      INVENTORY_DB_NAME: ${INVENTORY_DB_NAME:?Set INVENTORY_DB_NAME in .env}
+      INVENTORY_DB_USER: ${INVENTORY_DB_USER:?Set INVENTORY_DB_USER in .env}
+      INVENTORY_DB_PASSWORD: ${INVENTORY_DB_PASSWORD:?Set INVENTORY_DB_PASSWORD in .env}
+      ORDER_DB_NAME: ${ORDER_DB_NAME:?Set ORDER_DB_NAME in .env}
+      ORDER_DB_USER: ${ORDER_DB_USER:?Set ORDER_DB_USER in .env}
+      ORDER_DB_PASSWORD: ${ORDER_DB_PASSWORD:?Set ORDER_DB_PASSWORD in .env}
+      PAYMENT_DB_NAME: ${PAYMENT_DB_NAME:?Set PAYMENT_DB_NAME in .env}
+      PAYMENT_DB_USER: ${PAYMENT_DB_USER:?Set PAYMENT_DB_USER in .env}
+      PAYMENT_DB_PASSWORD: ${PAYMENT_DB_PASSWORD:?Set PAYMENT_DB_PASSWORD in .env}
+      DELIVERY_DB_NAME: ${DELIVERY_DB_NAME:?Set DELIVERY_DB_NAME in .env}
+      DELIVERY_DB_USER: ${DELIVERY_DB_USER:?Set DELIVERY_DB_USER in .env}
+      DELIVERY_DB_PASSWORD: ${DELIVERY_DB_PASSWORD:?Set DELIVERY_DB_PASSWORD in .env}
+      NOTIFICATION_DB_NAME: ${NOTIFICATION_DB_NAME:?Set NOTIFICATION_DB_NAME in .env}
+      NOTIFICATION_DB_USER: ${NOTIFICATION_DB_USER:?Set NOTIFICATION_DB_USER in .env}
+      NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:?Set NOTIFICATION_DB_PASSWORD in .env}
+      KEYCLOAK_DB_NAME: ${KEYCLOAK_DB_NAME:?Set KEYCLOAK_DB_NAME in .env}
+      KEYCLOAK_DB_USER: ${KEYCLOAK_DB_USER:?Set KEYCLOAK_DB_USER in .env}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD in .env}
+      MONITORING_DB_USER: ${MONITORING_DB_USER:?Set MONITORING_DB_USER in .env}
+      MONITORING_DB_PASSWORD: ${MONITORING_DB_PASSWORD:?Set MONITORING_DB_PASSWORD in .env}
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - log_connections=on
+      - -c
+      - log_disconnections=on
+      - -c
+      - log_min_duration_statement=500
+      - -c
+      - password_encryption=scram-sha-256
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/10-init-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    mem_limit: 1g
+    cpus: 1.0
+
+  redis:
+    <<: *common-service
+    image: redis:8.8.0-alpine
+    profiles: ["core"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --save
+      - "60"
+      - "1"
+      - --requirepass
+      - ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+      - --maxmemory-policy
+      - allkeys-lru
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 384m
+    cpus: 0.50
+
+  kafka:
+    <<: *common-service
+    image: apache/kafka:4.3.1
+    profiles: ["core"]
+    environment:
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,EXTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:${KAFKA_PORT:-29092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      KAFKA_NUM_PARTITIONS: 6
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_DELETE_TOPIC_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    ports:
+      - "127.0.0.1:${KAFKA_PORT:-29092}:29092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 20s
+    mem_limit: 1g
+    cpus: 1.0
+
+  kafka-init:
+    init: true
+    image: apache/kafka:4.3.1
+    profiles: ["core"]
+    restart: "no"
+    networks:
+      - platform-internal
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "/opt/platform/create-topics.sh"]
+    volumes:
+      - ./infrastructure/messaging/create-topics.sh:/opt/platform/create-topics.sh:ro
+    mem_limit: 256m
+    cpus: 0.25
+
+  keycloak:
+    <<: *common-service
+    image: quay.io/keycloak/keycloak:26.7.0
+    profiles: ["core"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:?Set KEYCLOAK_ADMIN in .env}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in .env}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${KEYCLOAK_DB_NAME:?Set KEYCLOAK_DB_NAME in .env}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:?Set KEYCLOAK_DB_USER in .env}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD in .env}
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME: http://localhost:${KEYCLOAK_PORT:-8080}
+      KC_HOSTNAME_STRICT: "false"
+      KC_PROXY_HEADERS: xforwarded
+      JAVA_OPTS_KC_HEAP: -XX:InitialRAMPercentage=25 -XX:MaxRAMPercentage=65
+    ports:
+      - "127.0.0.1:${KEYCLOAK_PORT:-8080}:8080"
+      - "127.0.0.1:${KEYCLOAK_MANAGEMENT_PORT:-9000}:9000"
+    volumes:
+      - ./infrastructure/keycloak/realm-export.json:/opt/keycloak/data/import/platform-realm.json:ro
+    tmpfs:
+      - /tmp:size=64m
+    healthcheck:
+      test:
+        - CMD
+        - /bin/bash
+        - -c
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          IFS= read -r status <&3 &&
+          [[ "$$status" == *"200"* ]]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    mem_limit: 1g
+    cpus: 1.0
+
+  keycloak-bootstrap:
+    init: true
+    image: quay.io/keycloak/keycloak:26.7.0
+    profiles: ["core"]
+    restart: "no"
+    networks:
+      - platform-internal
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:?Set KEYCLOAK_ADMIN in .env}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in .env}
+      KEYCLOAK_CUSTOMER_PASSWORD: ${KEYCLOAK_CUSTOMER_PASSWORD:?Set KEYCLOAK_CUSTOMER_PASSWORD in .env}
+      KEYCLOAK_STAFF_PASSWORD: ${KEYCLOAK_STAFF_PASSWORD:?Set KEYCLOAK_STAFF_PASSWORD in .env}
+    entrypoint: ["/bin/bash", "/opt/platform/bootstrap-users.sh"]
+    volumes:
+      - ./infrastructure/keycloak/bootstrap-users.sh:/opt/platform/bootstrap-users.sh:ro
+    mem_limit: 256m
+    cpus: 0.25
+
+  mailhog:
+    <<: *common-service
+    image: mailhog/mailhog:v1.0.1
+    profiles: ["core"]
+    environment:
+      MH_HOSTNAME: mailhog
+      MH_STORAGE: memory
+    ports:
+      - "127.0.0.1:${MAILHOG_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${MAILHOG_UI_PORT:-8025}:8025"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8025/api/v2/messages"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    mem_limit: 128m
+    cpus: 0.25
+
+  kafka-ui:
+    <<: *common-service
+    image: provectuslabs/kafka-ui:v0.7.2
+    profiles: ["tools"]
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local-platform
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: "false"
+    ports:
+      - "127.0.0.1:${KAFKA_UI_PORT:-8081}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    mem_limit: 512m
+    cpus: 0.50
+
+  prometheus:
+    <<: *common-service
+    image: prom/prometheus:v3.12.0
+    profiles: ["observability"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+      - --web.enable-remote-write-receiver
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9090/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    mem_limit: 768m
+    cpus: 0.75
+
+  loki:
+    <<: *common-service
+    image: grafana/loki:3.6.12
+    profiles: ["observability"]
+    command: ["-config.file=/etc/loki/loki-config.yml"]
+    ports:
+      - "127.0.0.1:${LOKI_PORT:-3100}:3100"
+    volumes:
+      - ./infrastructure/monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki-data:/loki
+    healthcheck:
+      test: ["CMD", "/usr/bin/loki", "-version"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    mem_limit: 512m
+    cpus: 0.50
+
+  tempo:
+    <<: *common-service
+    image: grafana/tempo:3.0.2
+    profiles: ["observability"]
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    ports:
+      - "127.0.0.1:${TEMPO_PORT:-3200}:3200"
+      - "127.0.0.1:${OTLP_GRPC_PORT:-4317}:4317"
+      - "127.0.0.1:${OTLP_HTTP_PORT:-4318}:4318"
+    volumes:
+      - ./infrastructure/monitoring/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo-data:/var/tempo
+    healthcheck:
+      test: ["CMD", "/tempo", "-version"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    mem_limit: 768m
+    cpus: 0.75
+
+  alloy:
+    <<: *common-service
+    image: grafana/alloy:v1.18.0
+    profiles: ["observability"]
+    depends_on:
+      loki:
+        condition: service_healthy
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./infrastructure/monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - platform-logs:/var/log/platform:ro
+      - alloy-data:/var/lib/alloy/data
+    healthcheck:
+      test: ["CMD", "/bin/alloy", "--version"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    mem_limit: 256m
+    cpus: 0.25
+
+  kafka-exporter:
+    <<: *common-service
+    image: danielqsj/kafka-exporter:v1.9.0
+    profiles: ["observability"]
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command:
+      - --kafka.server=kafka:9092
+      - --web.listen-address=:9308
+    mem_limit: 128m
+    cpus: 0.25
+
+  redis-exporter:
+    <<: *common-service
+    image: oliver006/redis_exporter:v1.77.0
+    profiles: ["observability"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    mem_limit: 128m
+    cpus: 0.25
+
+  postgres-exporter:
+    <<: *common-service
+    image: prometheuscommunity/postgres-exporter:v0.17.1
+    profiles: ["observability"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATA_SOURCE_URI: postgres:5432/platform_admin?sslmode=disable
+      DATA_SOURCE_USER: ${MONITORING_DB_USER:?Set MONITORING_DB_USER in .env}
+      DATA_SOURCE_PASS: ${MONITORING_DB_PASSWORD:?Set MONITORING_DB_PASSWORD in .env}
+    mem_limit: 128m
+    cpus: 0.25
+
+  grafana:
+    <<: *common-service
+    image: grafana/grafana:13.0.1-security-01
+    profiles: ["observability"]
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?Set GRAFANA_ADMIN_USER in .env}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_SECURITY_COOKIE_SECURE: "false"
+      GF_SECURITY_COOKIE_SAMESITE: strict
+      GF_SERVER_DOMAIN: localhost
+      GF_LOG_MODE: console
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infrastructure/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    mem_limit: 512m
+    cpus: 0.50
+
+networks:
+  platform-internal:
+    name: ${COMPOSE_PROJECT_NAME:-order-logistics}-internal
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  kafka-data:
+  prometheus-data:
+  loki-data:
+  tempo-data:
+  grafana-data:
+  alloy-data:
+  platform-logs:

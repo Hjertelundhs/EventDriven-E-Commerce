@@ -1,0 +1,31 @@
+# Local environment and secrets
+.env
+.env.local
+*.local.env
+
+# Local certificates, keys and secret material
+*.key
+*.pem
+*.p12
+*.jks
+secrets/
+
+# Build output and dependencies (future phases)
+target/
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# IDE and operating system
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Runtime data must live in Docker named volumes
+.data/
+data/
+*.log
