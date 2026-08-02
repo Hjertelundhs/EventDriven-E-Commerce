@@ -52,3 +52,10 @@ scrape_configs:
       - targets: ["alloy:12345"]
         labels:
           application: alloy
+
+  - job_name: product-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["product-service:8082"]
+        labels:
+          application: product-service

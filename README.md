@@ -1,6 +1,6 @@
 # Order & Logistics Platform
 
-Ett produktionsnära portfolio-projekt för en eventdriven order- och logistikplattform. Monorepot byggs iterativt i tio faser. **Fas 1: arkitektur** och **Fas 2: lokal infrastruktur** är levererade. Ingen backend- eller frontendapplikation har genererats ännu.
+Ett produktionsnära portfolio-projekt för en eventdriven order- och logistikplattform. Monorepot byggs iterativt i tio faser. **Fas 1: arkitektur**, **Fas 2: lokal infrastruktur** och **Fas 3: Product Service** är levererade.
 
 ## Arkitekturella mål
 
@@ -25,6 +25,8 @@ Ett produktionsnära portfolio-projekt för en eventdriven order- och logistikpl
 - [ADR-index](docs/adr/README.md)
 - [Plan för Fas 2](docs/architecture/phase-2-plan.md)
 - [Lokal utvecklingsguide](docs/architecture/local-development.md)
+- [Fas 3 — Product Service](docs/architecture/phase-3-product-service.md)
+- [Teststrategi](docs/testing/test-strategy.md)
 
 ## Lokal start
 
@@ -36,12 +38,20 @@ notepad .env
 .\scripts\start-local.ps1
 ```
 
-Skriptet startar PostgreSQL, Kafka, Redis, Keycloak, MailHog, Kafka UI och observability-stacken och kör därefter verifiering. Fullständig port-, credential- och felsökningsinformation finns i [lokal utvecklingsguide](docs/architecture/local-development.md).
+Skriptet startar PostgreSQL, Kafka, Redis, Keycloak, MailHog, Product Service, Kafka UI och observability-stacken och kör därefter verifiering. Fullständig port-, credential- och felsökningsinformation finns i [lokal utvecklingsguide](docs/architecture/local-development.md).
 
-## Kända begränsningar efter Fas 2
+Product Service kan även byggas separat:
 
-- Inga Spring Boot-applikationer, React-filer, databasmigrationer eller tester finns ännu.
-- Eventkatalogen definierar semantiken; maskinvaliderbara JSON Schema-filer skapas tillsammans med första producerande tjänsten.
+```powershell
+cd backend/product-service
+.\mvnw.cmd verify
+```
+
+## Kända begränsningar efter Fas 3
+
+- Endast Product Service är implementerad; övriga backendtjänster och React-applikationen följer i Fas 4–9.
+- Product Service-skrivningar är inte ännu rollskyddade; defense-in-depth med Gateway, JWT och method security levereras i Fas 8.
+- `ProductChangedV1` har ett maskinvaliderbart JSON Schema; övriga eventkontrakt skapas med respektive producerande tjänst.
 - Den lokala infrastrukturen är single-node och använder loopbackbunden plaintext där produktion kräver TLS och redundans.
 - Kubernetes, Helm, Terraform, nätverkspolicyer och produktionssecrets tillhör Fas 10.
 

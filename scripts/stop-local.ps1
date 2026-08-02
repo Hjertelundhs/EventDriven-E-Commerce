@@ -38,7 +38,11 @@ if ($RemoveVolumes -and -not $Force) {
     }
 }
 
-$arguments = @('compose', '--env-file', $environmentFile, 'down', '--remove-orphans')
+$arguments = @(
+    'compose', '--env-file', $environmentFile,
+    '--profile', 'core', '--profile', 'apps', '--profile', 'tools', '--profile', 'observability',
+    'down', '--remove-orphans'
+)
 if ($RemoveVolumes) {
     $arguments += '--volumes'
 }

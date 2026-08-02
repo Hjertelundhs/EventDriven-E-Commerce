@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.event-driven-commerce.test/events/product-changed-v1.schema.json",
+  "title": "ProductChangedV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId", "eventType", "eventVersion", "aggregateId", "correlationId",
+    "causationId", "occurredAt", "payload"
+  ],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "eventType": { "const": "ProductChangedV1" },
+    "eventVersion": { "const": 1 },
+    "aggregateId": { "type": "string", "format": "uuid" },
+    "correlationId": { "type": "string", "format": "uuid" },
+    "causationId": { "type": "string", "format": "uuid" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["productId", "sku", "changeType", "productVersion", "changedAt"],
+      "properties": {
+        "productId": { "type": "string", "format": "uuid" },
+        "sku": { "type": "string", "pattern": "^[A-Z0-9][A-Z0-9._-]{2,63}$" },
+        "changeType": { "enum": ["CREATED", "UPDATED", "DEACTIVATED"] },
+        "productVersion": { "type": "integer", "minimum": 0 },
+        "changedAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

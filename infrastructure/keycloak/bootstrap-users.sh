@@ -19,11 +19,24 @@ for variable_name in "${required_variables[@]}"; do
   fi
 done
 
-"$kcadm" config credentials \
-  --server "$server" \
-  --realm master \
-  --user "$KEYCLOAK_ADMIN" \
-  --password "$KEYCLOAK_ADMIN_PASSWORD" >/dev/null
+authenticated=false
+for attempt in {1..30}; do
+  if "$kcadm" config credentials \
+    --server "$server" \
+    --realm master \
+    --client "$KEYCLOAK_ADMIN" \
+    --secret "$KEYCLOAK_ADMIN_PASSWORD" >/dev/null 2>&1; then
+    authenticated=true
+    break
+  fi
+  echo "Waiting for Keycloak admin login (attempt ${attempt}/30)..." >&2
+  sleep 2
+done
+
+if [[ "$authenticated" != true ]]; then
+  echo "Could not authenticate the Keycloak bootstrap administrator." >&2
+  exit 1
+fi
 
 ensure_user() {
   local username="$1"
@@ -34,7 +47,7 @@ ensure_user() {
   local user_id
 
   user_id=$("$kcadm" get users \
-    --realm "$realm" \
+    --target-realm "$realm" \
     --query "username=${username}" \
     --fields id \
     --format csv \
@@ -42,7 +55,7 @@ ensure_user() {
 
   if [[ -z "$user_id" ]]; then
     user_id=$("$kcadm" create users \
-      --realm "$realm" \
+      --target-realm "$realm" \
       --set "username=${username}" \
       --set "email=${username}" \
       --set "firstName=${first_name}" \
@@ -53,12 +66,12 @@ ensure_user() {
   fi
 
   "$kcadm" set-password \
-    --realm "$realm" \
+    --target-realm "$realm" \
     --userid "$user_id" \
     --new-password "$password" >/dev/null
 
   "$kcadm" add-roles \
-    --realm "$realm" \
+    --target-realm "$realm" \
     --uid "$user_id" \
     --rolename "$role_name" >/dev/null
 

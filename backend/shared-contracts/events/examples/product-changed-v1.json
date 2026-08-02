@@ -1,0 +1,16 @@
+{
+  "eventId": "018f5f5d-7d98-7bd7-9f0f-f6cb53b07913",
+  "eventType": "ProductChangedV1",
+  "eventVersion": 1,
+  "aggregateId": "018f5f5b-d133-76b8-a57c-f1618d74c45e",
+  "correlationId": "018f5f58-e584-7b04-b9ac-2e5c7d6e9f70",
+  "causationId": "018f5f59-441d-7495-afd1-e72485bd4f67",
+  "occurredAt": "2026-08-02T12:00:00.000Z",
+  "payload": {
+    "productId": "018f5f5b-d133-76b8-a57c-f1618d74c45e",
+    "sku": "SKU-1000",
+    "changeType": "UPDATED",
+    "productVersion": 3,
+    "changedAt": "2026-08-02T12:00:00.000Z"
+  }
+}

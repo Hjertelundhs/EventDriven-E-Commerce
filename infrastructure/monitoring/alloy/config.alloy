@@ -23,7 +23,7 @@ loki.source.file "platform_logs" {
 loki.process "platform_logs" {
   stage.json {
     expressions = {
-      service       = "service",
+      service       = "service.name",
       level         = "level",
       trace_id      = "traceId",
       correlation_id = "correlationId",

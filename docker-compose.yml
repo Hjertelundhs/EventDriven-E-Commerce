@@ -169,8 +169,8 @@ services:
         condition: service_healthy
     command: ["start-dev", "--import-realm"]
     environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:?Set KEYCLOAK_ADMIN in .env}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in .env}
+      KC_BOOTSTRAP_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN:?Set KEYCLOAK_ADMIN in .env}
+      KC_BOOTSTRAP_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in .env}
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/${KEYCLOAK_DB_NAME:?Set KEYCLOAK_DB_NAME in .env}
       KC_DB_USERNAME: ${KEYCLOAK_DB_USER:?Set KEYCLOAK_DB_USER in .env}
@@ -186,7 +186,7 @@ services:
       - "127.0.0.1:${KEYCLOAK_PORT:-8080}:8080"
       - "127.0.0.1:${KEYCLOAK_MANAGEMENT_PORT:-9000}:9000"
     volumes:
-      - ./infrastructure/keycloak/realm-export.json:/opt/keycloak/data/import/platform-realm.json:ro
+      - ./infrastructure/keycloak/realm-export.json:/opt/keycloak/data/import/order-logistics-realm.json:ro
     tmpfs:
       - /tmp:size=64m
     healthcheck:
@@ -246,6 +246,53 @@ services:
       retries: 20
     mem_limit: 128m
     cpus: 0.25
+
+  product-service:
+    <<: *common-service
+    build:
+      context: ./backend/product-service
+      dockerfile: Dockerfile
+    image: event-driven-commerce/product-service:0.1.0
+    profiles: ["apps"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      ENVIRONMENT: local
+      PRODUCT_SERVICE_PORT: 8082
+      PRODUCT_DB_URL: jdbc:postgresql://postgres:5432/${PRODUCT_DB_NAME:?Set PRODUCT_DB_NAME in .env}
+      PRODUCT_DB_USER: ${PRODUCT_DB_USER:?Set PRODUCT_DB_USER in .env}
+      PRODUCT_DB_PASSWORD: ${PRODUCT_DB_PASSWORD:?Set PRODUCT_DB_PASSWORD in .env}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://tempo:4318/v1/traces
+      LOG_FILE: /var/log/platform/product-service.json
+    ports:
+      - "127.0.0.1:${PRODUCT_SERVICE_PORT:-8082}:8082"
+    volumes:
+      - platform-logs:/var/log/platform
+    healthcheck:
+      test:
+        - CMD
+        - /bin/bash
+        - -c
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/8082 &&
+          printf 'GET /actuator/health/readiness HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          IFS= read -r status <&3 &&
+          [[ "$$status" == *"200"* ]]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    mem_limit: 768m
+    cpus: 0.75
 
   kafka-ui:
     <<: *common-service

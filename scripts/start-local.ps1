@@ -103,7 +103,7 @@ if ($LASTEXITCODE -ne 0) {
 
 $profiles = @('--profile', 'core')
 if (-not $CoreOnly) {
-    $profiles += @('--profile', 'tools', '--profile', 'observability')
+    $profiles += @('--profile', 'apps', '--profile', 'tools', '--profile', 'observability')
 }
 
 Push-Location $repositoryRoot

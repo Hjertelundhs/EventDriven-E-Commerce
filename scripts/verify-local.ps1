@@ -124,7 +124,7 @@ $requiredSettings = @(
     'COMPOSE_PROJECT_NAME', 'POSTGRES_PORT', 'REDIS_PORT', 'KAFKA_PORT',
     'KEYCLOAK_PORT', 'KEYCLOAK_MANAGEMENT_PORT', 'MAILHOG_SMTP_PORT',
     'MAILHOG_UI_PORT', 'PROMETHEUS_PORT', 'GRAFANA_PORT', 'LOKI_PORT',
-    'TEMPO_PORT', 'GATEWAY_DB_NAME', 'GATEWAY_DB_USER', 'GATEWAY_DB_PASSWORD',
+    'TEMPO_PORT', 'PRODUCT_SERVICE_PORT', 'GATEWAY_DB_NAME', 'GATEWAY_DB_USER', 'GATEWAY_DB_PASSWORD',
     'IDENTITY_DB_NAME', 'IDENTITY_DB_USER', 'IDENTITY_DB_PASSWORD',
     'PRODUCT_DB_NAME', 'PRODUCT_DB_USER', 'PRODUCT_DB_PASSWORD',
     'INVENTORY_DB_NAME', 'INVENTORY_DB_USER', 'INVENTORY_DB_PASSWORD',
@@ -178,8 +178,16 @@ try {
         Write-Host "[OK] isolated database $databaseName" -ForegroundColor Green
     }
 
-    & docker compose --env-file $environmentFile exec --no-TTY --env "PGPASSWORD=$($settings['PRODUCT_DB_PASSWORD'])" postgres psql --host 127.0.0.1 --username $settings['PRODUCT_DB_USER'] --dbname $settings['ORDER_DB_NAME'] --command 'SELECT 1' *> $null
-    if ($LASTEXITCODE -eq 0) {
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & docker compose --env-file $environmentFile exec --no-TTY --env "PGPASSWORD=$($settings['PRODUCT_DB_PASSWORD'])" postgres psql --host 127.0.0.1 --username $settings['PRODUCT_DB_USER'] --dbname $settings['ORDER_DB_NAME'] --command 'SELECT 1' *> $null
+        $crossServiceDatabaseExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    if ($crossServiceDatabaseExitCode -eq 0) {
         throw 'Database isolation failure: the product principal connected to the order database.'
     }
     Write-Host '[OK] cross-service database access is denied' -ForegroundColor Green
@@ -279,6 +287,16 @@ try {
         }
     }
 
+    if ($runningServices -contains 'product-service') {
+        $productServicePort = [int]$settings['PRODUCT_SERVICE_PORT']
+        Wait-ForCondition -Description 'Product Service readiness endpoint' -Timeout $TimeoutSeconds -Condition {
+            Test-HttpEndpoint -Uri "http://127.0.0.1:$productServicePort/actuator/health/readiness"
+        }
+        Wait-ForCondition -Description 'Product Service OpenAPI endpoint' -Timeout $TimeoutSeconds -Condition {
+            Test-HttpEndpoint -Uri "http://127.0.0.1:$productServicePort/v3/api-docs"
+        }
+    }
+
     if ($runningServices -contains 'prometheus') {
         foreach ($observabilityService in @('prometheus', 'loki', 'tempo', 'alloy', 'kafka-exporter', 'redis-exporter', 'postgres-exporter', 'grafana')) {
             if ($runningServices -notcontains $observabilityService) {
@@ -304,7 +322,11 @@ try {
             Test-HttpEndpoint -Uri "http://127.0.0.1:$grafanaPort/api/health"
         }
 
-        foreach ($prometheusJob in @('keycloak', 'kafka-exporter', 'redis-exporter', 'postgres-exporter', 'loki', 'tempo', 'alloy')) {
+        $prometheusJobs = @('keycloak', 'kafka-exporter', 'redis-exporter', 'postgres-exporter', 'loki', 'tempo', 'alloy')
+        if ($runningServices -contains 'product-service') {
+            $prometheusJobs += 'product-service'
+        }
+        foreach ($prometheusJob in $prometheusJobs) {
             $queryExpression = 'up{job="' + $prometheusJob + '"} == 1'
             $query = [Uri]::EscapeDataString($queryExpression)
             Wait-ForCondition -Description "Prometheus target $prometheusJob" -Timeout $TimeoutSeconds -Condition {
@@ -334,4 +356,4 @@ finally {
     Pop-Location
 }
 
-Write-Host 'All applicable Phase 2 verification checks passed.' -ForegroundColor Green
+Write-Host 'All applicable local environment verification checks passed.' -ForegroundColor Green

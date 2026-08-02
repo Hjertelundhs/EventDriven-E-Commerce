@@ -2,7 +2,7 @@
 
 ## Kontraktsstrategi
 
-Events serialiseras som JSON och valideras mot JSON Schema Draft 2020-12. Schemat publiceras i `backend/shared-contracts` från och med första producerande implementationsfas. Kompatibilitetsregeln är backward compatible inom samma majorversion: nya optional fields får läggas till, befintliga fält får inte byta betydelse eller typ och enum-utökningar behandlas som potentiellt brytande för konsumenter.
+Events serialiseras som JSON och valideras mot JSON Schema Draft 2020-12. Scheman publiceras i `backend/shared-contracts`; `ProductChangedV1` levereras i Fas 3 som `events/product-changed-v1.schema.json`. Kompatibilitetsregeln är backward compatible inom samma majorversion: nya optional fields får läggas till, befintliga fält får inte byta betydelse eller typ och enum-utökningar behandlas som potentiellt brytande för konsumenter.
 
 Brytande förändringar får ett nytt eventnamn, exempelvis `OrderCreatedV2`, och samexisterar under en migrationsperiod. Konsumenter ignorerar okända optional fields men avvisar okända majorversioner till DLT.
 
