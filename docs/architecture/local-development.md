@@ -7,7 +7,7 @@
 - Minst cirka 6 GB ledigt container-minne för hela miljön.
 - Portarna i `.env` måste vara lediga på `127.0.0.1`.
 
-Ingen lokal Java-, Maven-, Node-, PostgreSQL-, Kafka- eller Redis-installation behövs för Compose-start. Product Service byggs i container med Java 21 och Maven 3.9.11.
+Ingen lokal Java-, Maven-, Node-, PostgreSQL-, Kafka- eller Redis-installation behövs för Compose-start. Product Service och Inventory Service byggs i containrar med Java 21 och Maven 3.9.11.
 
 ## Låsta komponentversioner
 
@@ -68,6 +68,7 @@ Alla publicerade portar binds uttryckligen till loopback och kan ändras i `.env
 | MailHog UI | `http://127.0.0.1:8025` | `core` | Inspektera e-post |
 | Kafka UI | `http://127.0.0.1:8081` | `tools` | Topics, partitions och messages |
 | Product Service | `http://127.0.0.1:8082` | `apps` | Produkt-API, OpenAPI och Actuator |
+| Inventory Service | `http://127.0.0.1:8083` | `apps` | Lager- och reservations-API, OpenAPI och Actuator |
 | Prometheus | `http://127.0.0.1:9090` | `observability` | Metrics och queries |
 | Grafana | `http://127.0.0.1:3000` | `observability` | Dashboards och Explore |
 | Loki | `http://127.0.0.1:3100` | `observability` | Logg-API |
@@ -151,6 +152,7 @@ Verifieringen kontrollerar:
 - verklig SMTP-leverans till MailHog;
 - valfria tools/observability-endpoints och Grafana-datasources.
 - Product Service readiness och OpenAPI när `apps`-profilen körs.
+- Inventory Service readiness och OpenAPI när `apps`-profilen körs.
 
 ## Stopp och återställning
 

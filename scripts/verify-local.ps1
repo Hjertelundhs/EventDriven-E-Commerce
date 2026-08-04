@@ -124,7 +124,8 @@ $requiredSettings = @(
     'COMPOSE_PROJECT_NAME', 'POSTGRES_PORT', 'REDIS_PORT', 'KAFKA_PORT',
     'KEYCLOAK_PORT', 'KEYCLOAK_MANAGEMENT_PORT', 'MAILHOG_SMTP_PORT',
     'MAILHOG_UI_PORT', 'PROMETHEUS_PORT', 'GRAFANA_PORT', 'LOKI_PORT',
-    'TEMPO_PORT', 'PRODUCT_SERVICE_PORT', 'GATEWAY_DB_NAME', 'GATEWAY_DB_USER', 'GATEWAY_DB_PASSWORD',
+    'TEMPO_PORT', 'PRODUCT_SERVICE_PORT', 'INVENTORY_SERVICE_PORT',
+    'GATEWAY_DB_NAME', 'GATEWAY_DB_USER', 'GATEWAY_DB_PASSWORD',
     'IDENTITY_DB_NAME', 'IDENTITY_DB_USER', 'IDENTITY_DB_PASSWORD',
     'PRODUCT_DB_NAME', 'PRODUCT_DB_USER', 'PRODUCT_DB_PASSWORD',
     'INVENTORY_DB_NAME', 'INVENTORY_DB_USER', 'INVENTORY_DB_PASSWORD',
@@ -297,6 +298,16 @@ try {
         }
     }
 
+    if ($runningServices -contains 'inventory-service') {
+        $inventoryServicePort = [int]$settings['INVENTORY_SERVICE_PORT']
+        Wait-ForCondition -Description 'Inventory Service readiness endpoint' -Timeout $TimeoutSeconds -Condition {
+            Test-HttpEndpoint -Uri "http://127.0.0.1:$inventoryServicePort/actuator/health/readiness"
+        }
+        Wait-ForCondition -Description 'Inventory Service OpenAPI endpoint' -Timeout $TimeoutSeconds -Condition {
+            Test-HttpEndpoint -Uri "http://127.0.0.1:$inventoryServicePort/v3/api-docs"
+        }
+    }
+
     if ($runningServices -contains 'prometheus') {
         foreach ($observabilityService in @('prometheus', 'loki', 'tempo', 'alloy', 'kafka-exporter', 'redis-exporter', 'postgres-exporter', 'grafana')) {
             if ($runningServices -notcontains $observabilityService) {
@@ -325,6 +336,9 @@ try {
         $prometheusJobs = @('keycloak', 'kafka-exporter', 'redis-exporter', 'postgres-exporter', 'loki', 'tempo', 'alloy')
         if ($runningServices -contains 'product-service') {
             $prometheusJobs += 'product-service'
+        }
+        if ($runningServices -contains 'inventory-service') {
+            $prometheusJobs += 'inventory-service'
         }
         foreach ($prometheusJob in $prometheusJobs) {
             $queryExpression = 'up{job="' + $prometheusJob + '"} == 1'
