@@ -336,6 +336,51 @@ services:
     mem_limit: 768m
     cpus: 0.75
 
+  order-service:
+    <<: *common-service
+    build:
+      context: ./backend/order-service
+      dockerfile: Dockerfile
+    image: event-driven-commerce/order-service:0.1.0
+    profiles: ["apps"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      product-service:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: local
+      ORDER_SERVICE_PORT: 8084
+      ORDER_DB_URL: jdbc:postgresql://postgres:5432/${ORDER_DB_NAME:?Set ORDER_DB_NAME in .env}
+      ORDER_DB_USER: ${ORDER_DB_USER:?Set ORDER_DB_USER in .env}
+      ORDER_DB_PASSWORD: ${ORDER_DB_PASSWORD:?Set ORDER_DB_PASSWORD in .env}
+      PRODUCT_SERVICE_BASE_URL: http://product-service:8082
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://tempo:4318/v1/traces
+      LOG_FILE: /var/log/platform/order-service.json
+    ports:
+      - "127.0.0.1:${ORDER_SERVICE_PORT:-8084}:8084"
+    volumes:
+      - platform-logs:/var/log/platform
+    healthcheck:
+      test:
+        - CMD
+        - /bin/bash
+        - -c
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/8084 &&
+          printf 'GET /actuator/health/readiness HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          IFS= read -r status <&3 &&
+          [[ "$$status" == *"200"* ]]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    mem_limit: 768m
+    cpus: 0.75
+
   kafka-ui:
     <<: *common-service
     image: provectuslabs/kafka-ui:v0.7.2

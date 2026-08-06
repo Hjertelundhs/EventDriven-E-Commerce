@@ -66,3 +66,10 @@ scrape_configs:
       - targets: ["inventory-service:8083"]
         labels:
           application: inventory-service
+
+  - job_name: order-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["order-service:8084"]
+        labels:
+          application: order-service
