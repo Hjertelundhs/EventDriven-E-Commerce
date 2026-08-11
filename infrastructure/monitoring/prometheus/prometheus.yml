@@ -73,3 +73,10 @@ scrape_configs:
       - targets: ["order-service:8084"]
         labels:
           application: order-service
+
+  - job_name: payment-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["payment-service:8085"]
+        labels:
+          application: payment-service

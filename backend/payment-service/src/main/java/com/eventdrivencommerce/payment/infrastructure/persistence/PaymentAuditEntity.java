@@ -1,0 +1,3 @@
+package com.eventdrivencommerce.payment.infrastructure.persistence;
+import jakarta.persistence.*;import java.time.Instant;import java.util.UUID;
+@Entity @Table(name="payment_audit") class PaymentAuditEntity{@Id UUID id;@Column(name="payment_id",nullable=false)UUID paymentId;@Column(nullable=false,length=64)String action;@Column(nullable=false,length=32)String outcome;@Column(name="safe_detail",length=160)String safeDetail;@Column(name="occurred_at",nullable=false)Instant occurredAt;protected PaymentAuditEntity(){}PaymentAuditEntity(UUID paymentId,String action,String outcome,String detail,Instant at){id=UUID.randomUUID();this.paymentId=paymentId;this.action=action;this.outcome=outcome;this.safeDetail=detail;occurredAt=at;}}

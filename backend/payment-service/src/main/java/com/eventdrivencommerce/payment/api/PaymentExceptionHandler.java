@@ -1,0 +1,3 @@
+package com.eventdrivencommerce.payment.api;
+import com.eventdrivencommerce.payment.application.PaymentNotReadyException;import org.springframework.http.*;import org.springframework.web.bind.annotation.*;import java.time.Instant;
+@RestControllerAdvice class PaymentExceptionHandler{@ExceptionHandler(PaymentNotReadyException.class)ResponseEntity<ProblemDetail>notFound(PaymentNotReadyException ex){var p=ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND,"Payment was not found");p.setTitle("Payment not found");p.setProperty("timestamp",Instant.now());return ResponseEntity.status(HttpStatus.NOT_FOUND).body(p);}}

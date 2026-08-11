@@ -1,0 +1,3 @@
+package com.eventdrivencommerce.payment.api;
+import com.eventdrivencommerce.payment.domain.*;import java.math.BigDecimal;import java.time.Instant;import java.util.UUID;
+public record PaymentResponse(UUID id,UUID orderId,BigDecimal amount,String currency,PaymentStatus status,String providerReference,String failureReason,UUID refundId,String refundProviderReference,Instant createdAt,Instant updatedAt){static PaymentResponse from(Payment p){return new PaymentResponse(p.id(),p.orderId(),p.amount(),p.currency(),p.status(),p.providerReference(),p.failureReason(),p.refundId(),p.refundProviderReference(),p.createdAt(),p.updatedAt());}}

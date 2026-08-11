@@ -1,0 +1,3 @@
+package com.eventdrivencommerce.payment.api;
+import com.eventdrivencommerce.payment.application.PaymentService;import io.swagger.v3.oas.annotations.tags.Tag;import org.springframework.web.bind.annotation.*;import java.util.UUID;
+@RestController @RequestMapping("/api/v1/payments")@Tag(name="Payments")public class PaymentController{private final PaymentService payments;public PaymentController(PaymentService payments){this.payments=payments;}@GetMapping("/{id}")public PaymentResponse get(@PathVariable UUID id){return PaymentResponse.from(payments.get(id));}@GetMapping("/by-order/{orderId}")public PaymentResponse byOrder(@PathVariable UUID orderId){return PaymentResponse.from(payments.getByOrder(orderId));}}

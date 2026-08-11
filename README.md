@@ -1,6 +1,6 @@
 # Order & Logistics Platform
 
-Ett produktionsnära portfolio-projekt för en eventdriven order- och logistikplattform. Monorepot byggs iterativt i tio faser. **Fas 1: arkitektur**, **Fas 2: lokal infrastruktur**, **Fas 3: Product Service** och **Fas 5: Order Service** är levererade. **Fas 4: Inventory Service** har ett fungerande REST- och persistenslager.
+Ett produktionsnära portfolio-projekt för en eventdriven order- och logistikplattform. Monorepot byggs iterativt i tio faser. Fas 1–5 är levererade och Fas 6 har en körbar Payment Service-baslinje.
 
 ## Arkitekturella mål
 
@@ -28,6 +28,7 @@ Ett produktionsnära portfolio-projekt för en eventdriven order- och logistikpl
 - [Fas 3 — Product Service](docs/architecture/phase-3-product-service.md)
 - [Fas 4 — Inventory Service](docs/architecture/phase-4-inventory-service.md)
 - [Fas 5 — Order Service](backend/order-service/README.md)
+- [Fas 6 — Payment Service](backend/payment-service/README.md)
 - [Teststrategi](docs/testing/test-strategy.md)
 
 ## Lokal start
@@ -40,7 +41,7 @@ notepad .env
 .\scripts\start-local.ps1
 ```
 
-Skriptet startar PostgreSQL, Kafka, Redis, Keycloak, MailHog, Product Service, Inventory Service, Order Service, Kafka UI och observability-stacken och kör därefter verifiering. Fullständig port-, credential- och felsökningsinformation finns i [lokal utvecklingsguide](docs/architecture/local-development.md).
+Skriptet startar PostgreSQL, Kafka, Redis, Keycloak, MailHog, Product Service, Inventory Service, Order Service, Payment Service, Kafka UI och observability-stacken och kör därefter verifiering. Fullständig port-, credential- och felsökningsinformation finns i [lokal utvecklingsguide](docs/architecture/local-development.md).
 
 Product Service kan även byggas separat:
 
@@ -63,12 +64,19 @@ cd backend/order-service
 .\mvnw.cmd -Djacoco.skip=true verify
 ```
 
-## Kända begränsningar efter Fas 5
+Payment Service verifieras separat med:
 
-- Product Service är komplett. Inventory Service har affärsendpoints och PostgreSQL-persistens men ännu inga Kafka consumers eller event-publicering.
-- Payment, Delivery, Notification, Gateway och React-applikationen följer i Fas 6–9.
+```powershell
+cd backend/payment-service
+.\mvnw.cmd verify
+```
+
+## Kända begränsningar i pågående Fas 6
+
+- Product, Inventory och Order Service driver nu order-till-lager-sagan via Kafka och transactional outbox.
+- Payment Service har nu den eventdrivna betalnings- och refundbaslinjen. Delivery, Notification, Gateway och React-applikationen följer i senare faser.
 - API-skrivningar är inte ännu rollskyddade; defense-in-depth med Gateway, JWT och method security levereras i Fas 8. Order Service använder tills dess den explicita trust boundary-headern `X-Customer-ID`.
-- Product- och Order-händelser har maskinvaliderbara JSON Scheman; övriga eventkontrakt skapas med respektive producerande tjänst.
+- Product-, Order-, Inventory- och Payment-händelser har maskinvaliderbara JSON Scheman.
 - Den lokala infrastrukturen är single-node och använder loopbackbunden plaintext där produktion kräver TLS och redundans.
 - Kubernetes, Helm, Terraform, nätverkspolicyer och produktionssecrets tillhör Fas 10.
 

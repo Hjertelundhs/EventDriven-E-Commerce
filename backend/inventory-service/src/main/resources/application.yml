@@ -70,7 +70,8 @@ inventory:
     topic: commerce.inventory.v1
     batch-size: ${INVENTORY_OUTBOX_BATCH_SIZE:50}
     poll-interval: ${INVENTORY_OUTBOX_POLL_INTERVAL:PT1S}
-    publisher-enabled: ${INVENTORY_OUTBOX_PUBLISHER_ENABLED:false}
+    publish-timeout: ${INVENTORY_OUTBOX_PUBLISH_TIMEOUT:PT10S}
+    publisher-enabled: ${INVENTORY_OUTBOX_PUBLISHER_ENABLED:true}
 
 management:
   endpoints:

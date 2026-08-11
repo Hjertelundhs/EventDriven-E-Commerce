@@ -1,0 +1,3 @@
+package com.eventdrivencommerce.payment.infrastructure.messaging;
+import jakarta.persistence.*;import java.io.Serializable;import java.util.Objects;import java.util.UUID;
+@Embeddable public class ProcessedEventId implements Serializable{@Column(name="consumer_group",length=120)String consumerGroup;@Column(name="event_id")UUID eventId;protected ProcessedEventId(){}public ProcessedEventId(String group,UUID id){consumerGroup=group;eventId=id;}@Override public boolean equals(Object o){return o instanceof ProcessedEventId p&&Objects.equals(consumerGroup,p.consumerGroup)&&Objects.equals(eventId,p.eventId);}@Override public int hashCode(){return Objects.hash(consumerGroup,eventId);}}

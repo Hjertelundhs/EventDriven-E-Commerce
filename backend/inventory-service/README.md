@@ -13,6 +13,7 @@ Phase 4 implementation for the inventory bounded context. The service is indepen
 - Stable reservation IDs, idempotent repeat requests, ETags, optimistic locking, and RFC 9457 errors.
 - JPA adapters and Flyway schema for inventory items, reservations, processed events and transactional outbox.
 - PostgreSQL, Kafka, OpenAPI, Prometheus, OTLP tracing and structured ECS logging configuration.
+- Idempotent `OrderCreatedV1` consumption, atomic multi-line reservation and inventory result outbox publication.
 - Non-root multi-stage Docker image and Compose `apps` profile wiring.
 - Domain, application, controller, Compose contract, and PostgreSQL Testcontainers tests.
 
@@ -52,7 +53,3 @@ All mutating requests carry the expected current version in their JSON body. Res
 | `GET` | `/api/v1/inventory/reservations/{id}` | Read a reservation |
 | `POST` | `/api/v1/inventory/reservations/{id}/release` | Return reserved stock to availability |
 | `POST` | `/api/v1/inventory/reservations/{id}/completion` | Consume reserved stock |
-
-## Deliberately deferred to the next Phase 4 increment
-
-Kafka order-event consumers, processed-event persistence behavior, inventory event schemas, and transactional outbox publication remain before Phase 4 is complete.

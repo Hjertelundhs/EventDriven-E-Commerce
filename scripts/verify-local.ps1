@@ -318,6 +318,16 @@ try {
         }
     }
 
+    if ($runningServices -contains 'payment-service') {
+        $paymentServicePort = [int]$settings['PAYMENT_SERVICE_PORT']
+        Wait-ForCondition -Description 'Payment Service readiness endpoint' -Timeout $TimeoutSeconds -Condition {
+            Test-HttpEndpoint -Uri "http://127.0.0.1:$paymentServicePort/actuator/health/readiness"
+        }
+        Wait-ForCondition -Description 'Payment Service OpenAPI endpoint' -Timeout $TimeoutSeconds -Condition {
+            Test-HttpEndpoint -Uri "http://127.0.0.1:$paymentServicePort/v3/api-docs"
+        }
+    }
+
     if ($runningServices -contains 'prometheus') {
         foreach ($observabilityService in @('prometheus', 'loki', 'tempo', 'alloy', 'kafka-exporter', 'redis-exporter', 'postgres-exporter', 'grafana')) {
             if ($runningServices -notcontains $observabilityService) {
@@ -352,6 +362,9 @@ try {
         }
         if ($runningServices -contains 'order-service') {
             $prometheusJobs += 'order-service'
+        }
+        if ($runningServices -contains 'payment-service') {
+            $prometheusJobs += 'payment-service'
         }
         foreach ($prometheusJob in $prometheusJobs) {
             $queryExpression = 'up{job="' + $prometheusJob + '"} == 1'
